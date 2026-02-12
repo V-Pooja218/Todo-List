@@ -1,0 +1,208 @@
+import java.io.*;
+import java.util.*;
+
+// -------- PRODUCT CLASS --------
+class Product {
+    private int id;
+    private String name;
+    private double price;
+    private int stock;
+
+    public Product(int id, String name, double price, int stock) {
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.stock = stock;
+    }
+
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public double getPrice() { return price; }
+    public int getStock() { return stock; }
+
+    public void reduceStock(int quantity) {
+        stock -= quantity;
+    }
+
+    public String toFileString() {
+        return id + "," + name + "," + price + "," + stock;
+    }
+
+    public void display() {
+        System.out.println(id + " | " + name + " | ₹" + price + " | Stock: " + stock);
+    }
+}
+
+// -------- CART ITEM --------
+class CartItem {
+    Product product;
+    int quantity;
+
+    public CartItem(Product product, int quantity) {
+        this.product = product;
+        this.quantity = quantity;
+    }
+
+    public double getTotalPrice() {
+        return quantity * product.getPrice();
+    }
+}
+
+// -------- MAIN SYSTEM --------
+public class ShoppingSystem {
+
+    static HashMap<Integer, Product> inventory = new HashMap<>();
+    static ArrayList<CartItem> cart = new ArrayList<>();
+    static final String FILE_NAME = "products.txt";
+
+    // ---------- FILE HANDLING ----------
+    public static void loadProducts() {
+        try (BufferedReader br = new BufferedReader(new FileReader(FILE_NAME))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] data = line.split(",");
+                inventory.put(
+                    Integer.parseInt(data[0]),
+                    new Product(
+                        Integer.parseInt(data[0]),
+                        data[1],
+                        Double.parseDouble(data[2]),
+                        Integer.parseInt(data[3])
+                    )
+                );
+            }
+        } catch (IOException e) {
+            System.out.println("No previous products found.");
+        }
+    }
+
+    public static void saveProducts() {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(FILE_NAME))) {
+            for (Product p : inventory.values()) {
+                pw.println(p.toFileString());
+            }
+        } catch (IOException e) {
+            System.out.println("Error saving products.");
+        }
+    }
+
+    // ---------- ADMIN ----------
+    public static void addProduct(Scanner sc) {
+        try {
+            System.out.print("Enter Product ID: ");
+            int id = sc.nextInt();
+            sc.nextLine();
+            System.out.print("Enter Product Name: ");
+            String name = sc.nextLine();
+            System.out.print("Enter Price: ");
+            double price = sc.nextDouble();
+            System.out.print("Enter Stock: ");
+            int stock = sc.nextInt();
+
+            inventory.put(id, new Product(id, name, price, stock));
+            System.out.println("Product added successfully!");
+
+        } catch (Exception e) {
+            System.out.println("Invalid Input!");
+            sc.nextLine();
+        }
+    }
+
+    // ---------- USER ----------
+    public static void viewProducts() {
+        if (inventory.isEmpty()) {
+            System.out.println("No products available.");
+            return;
+        }
+        for (Product p : inventory.values()) {
+            p.display();
+        }
+    }
+
+    public static void addToCart(Scanner sc) {
+        System.out.print("Enter Product ID: ");
+        int id = sc.nextInt();
+        Product p = inventory.get(id);
+
+        if (p == null) {
+            System.out.println("Product not found!");
+            return;
+        }
+
+        System.out.print("Enter Quantity: ");
+        int qty = sc.nextInt();
+
+        if (qty > p.getStock()) {
+            System.out.println("Not enough stock!");
+        } else {
+            cart.add(new CartItem(p, qty));
+            p.reduceStock(qty);
+            System.out.println("Added to cart!");
+        }
+    }
+
+    public static void checkout() {
+        if (cart.isEmpty()) {
+            System.out.println("Cart is empty.");
+            return;
+        }
+
+        double total = 0;
+        System.out.println("\n----- BILL -----");
+
+        for (CartItem item : cart) {
+            System.out.println(item.product.getName() +
+                    " x " + item.quantity +
+                    " = ₹" + item.getTotalPrice());
+            total += item.getTotalPrice();
+        }
+
+        System.out.println("-----------------");
+        System.out.println("Total Amount: ₹" + total);
+        cart.clear();
+    }
+
+    // ---------- MAIN ----------
+    public static void main(String[] args) {
+
+        Scanner sc = new Scanner(System.in);
+        loadProducts();
+        int choice;
+
+        do {
+            System.out.println("\n===== ONLINE SHOPPING SYSTEM =====");
+            System.out.println("1. Add Product (Admin)");
+            System.out.println("2. View Products");
+            System.out.println("3. Add to Cart");
+            System.out.println("4. Checkout");
+            System.out.println("5. Save & Exit");
+            System.out.print("Enter choice: ");
+
+            choice = sc.nextInt();
+
+            switch (choice) {
+                case 1:
+                    addProduct(sc);
+                    break;
+                case 2:
+                    viewProducts();
+                    break;
+                case 3:
+                    addToCart(sc);
+                    break;
+                case 4:
+                    checkout();
+                    break;
+                case 5:
+                    saveProducts();
+                    System.out.println("Data saved. Exiting...");
+                    break;
+                default:
+                    System.out.println("Invalid choice!");
+            }
+
+        } while (choice != 5);
+
+        sc.close();
+    }
+}
